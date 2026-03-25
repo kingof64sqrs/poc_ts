@@ -189,6 +189,8 @@ OUTPUT FORMAT
 ═══════════════════════════════════════
 Return ONLY a JSON object — no preamble, no markdown fences:
 {
+    "job_title": "<best short job title inferred from JD, empty string if unavailable>",
+    "experience_required": "<experience requirement exactly as short text like 3-5 years, 2+ years, Fresher, or empty string if unavailable>",
   "skills": [
     {
       "name": "<short resume-language skill name>",
@@ -375,6 +377,77 @@ def _normalize_skills(raw: list) -> list[dict[str, Any]]:
     return normalized
 
 
+EXPERIENCE_PATTERNS = [
+    r"\b\d+\s*(?:\+|plus)?\s*(?:to|-|–)\s*\d+\s*(?:years?|yrs?)\b",
+    r"\b(?:minimum|min)\s+\d+\s*(?:\+|plus)?\s*(?:years?|yrs?)\b",
+    r"\b\d+\s*(?:\+|plus)\s*(?:years?|yrs?)\b",
+    r"\b\d+\s*(?:years?|yrs?)\b",
+    r"\bfresher[s]?\b",
+]
+
+
+def _find_experience_match(text: str) -> re.Match[str] | None:
+    for pattern in EXPERIENCE_PATTERNS:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return match
+    return None
+
+
+def _extract_experience_required(jd_text: str) -> str:
+    text = jd_text.replace("\n", " ")
+    match = _find_experience_match(text)
+    if not match:
+        return ""
+    return re.sub(r"\s+", " ", match.group(0)).strip()
+
+
+def _clean_job_title(title: str) -> str:
+    value = re.sub(r"\s+", " ", title).strip(" -|:,;")
+    if not value:
+        return ""
+
+    # Remove embedded experience terms if they appear inside title text.
+    cleaned = value
+    while True:
+        match = _find_experience_match(cleaned)
+        if not match:
+            break
+        start, end = match.span()
+        cleaned = (cleaned[:start] + " " + cleaned[end:]).strip()
+        cleaned = re.sub(r"\s+", " ", cleaned)
+
+    cleaned = re.sub(r"\b(?:experience|exp)\b\s*[:\-]?", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" -|:,;")
+    return cleaned
+
+
+def _extract_job_title_fallback(jd_text: str) -> str:
+    lines = [line.strip() for line in jd_text.splitlines() if line.strip()]
+    if not lines:
+        return ""
+
+    # First try common explicit prefixes.
+    title_pattern = re.compile(
+        r"^(?:job\s*title|position|role)\s*[:\-]\s*(.+)$",
+        flags=re.IGNORECASE,
+    )
+    for line in lines[:12]:
+        match = title_pattern.match(line)
+        if match:
+            return _clean_job_title(match.group(1).strip())[:80]
+
+    # Fallback: use first short heading-like line.
+    for line in lines[:8]:
+        if len(line) <= 80 and not line.endswith(":"):
+            normalized_line = line.lower()
+            if "experience" in normalized_line or "years" in normalized_line:
+                continue
+            return _clean_job_title(line)
+
+    return _clean_job_title(lines[0])[:80]
+
+
 # ---------------------------------------------------------------------------
 # Core extraction
 # ---------------------------------------------------------------------------
@@ -400,11 +473,29 @@ def extract_from_jd(jd_text: str, strictness: int = 3) -> dict[str, Any]:
     payload = _extract_first_json(raw_text)
 
     skills = _normalize_skills(payload.get("skills", []))
+    job_title = str(payload.get("job_title", "")).strip()
+    experience_required = str(payload.get("experience_required", "")).strip()
+
+    if not job_title:
+        job_title = _extract_job_title_fallback(jd_text)
+    if not experience_required:
+        experience_required = _extract_experience_required(jd_text)
+
+    # If experience is embedded inside model-provided title, split it out.
+    if not experience_required and job_title:
+        match = _find_experience_match(job_title)
+        if match:
+            experience_required = re.sub(r"\s+", " ", match.group(0)).strip()
+
+    job_title = _clean_job_title(job_title)
+
     boolean_string = str(payload.get("boolean_string", "")).strip()
     boolean_string = _enforce_500_char_limit(boolean_string)
     reasoning = str(payload.get("reasoning", "")).strip()
 
     return {
+        "job_title": job_title,
+        "experience_required": experience_required,
         "skills": skills,
         "boolean_string": boolean_string,
         "boolean_char_count": len(boolean_string),

@@ -34,6 +34,8 @@ export default function App() {
   const [jd, setJd] = useState('');
   const [skills, setSkills] = useState([]);
   const [booleanString, setBooleanString] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [experienceRequired, setExperienceRequired] = useState('');
   const [status, setStatus] = useState('Paste a JD or upload a file to get started.');
   const [statusType, setStatusType] = useState('idle');
   const [isLoading, setIsLoading] = useState(false);
@@ -68,8 +70,12 @@ export default function App() {
   function applyResult(payload) {
     const extracted = Array.isArray(payload.skills) ? payload.skills : [];
     const query = typeof payload.boolean_string === 'string' ? payload.boolean_string.trim() : '';
+    const title = typeof payload.job_title === 'string' ? payload.job_title.trim() : '';
+    const experience = typeof payload.experience_required === 'string' ? payload.experience_required.trim() : '';
     setSkills(extracted);
     setBooleanString(query);
+    setJobTitle(title);
+    setExperienceRequired(experience);
     if (payload.extracted_text_preview) setTextPreview(payload.extracted_text_preview);
     setMsg(
       extracted.length
@@ -85,7 +91,7 @@ export default function App() {
     if (!value) { setMsg('Please paste a job description first.', 'err'); return; }
     setIsLoading(true);
     setMsg('Analyzing job description with AI…', 'busy');
-    setBooleanString(''); setSkills([]); setTextPreview('');
+    setBooleanString(''); setSkills([]); setTextPreview(''); setJobTitle(''); setExperienceRequired('');
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/extract`, {
@@ -125,7 +131,7 @@ export default function App() {
     if (!uploadedFile) { setMsg('Please upload a file first.', 'err'); return; }
     setIsLoading(true);
     setMsg(`Reading "${uploadedFile.name}"…`, 'busy');
-    setBooleanString(''); setSkills([]); setTextPreview('');
+    setBooleanString(''); setSkills([]); setTextPreview(''); setJobTitle(''); setExperienceRequired('');
 
     try {
       const form = new FormData();
@@ -168,6 +174,7 @@ export default function App() {
 
   function onClear() {
     setJd(''); setSkills([]); setBooleanString(''); setUploadedFile(null); setTextPreview('');
+    setJobTitle(''); setExperienceRequired('');
     setMsg('Ready. Paste a new job description or upload a file.', 'idle');
   }
 
@@ -419,6 +426,18 @@ export default function App() {
 
           {/* Boolean String */}
           <div className="boolean-section">
+            <div className="section-label">JD Summary</div>
+            <div className="jd-summary-box">
+              <div className="jd-summary-item">
+                <span className="jd-summary-key">Job Title</span>
+                <span className="jd-summary-value">{jobTitle || 'Not identified yet'}</span>
+              </div>
+              <div className="jd-summary-item">
+                <span className="jd-summary-key">Experience Required</span>
+                <span className="jd-summary-value">{experienceRequired || 'Not identified yet'}</span>
+              </div>
+            </div>
+
             <div className="section-label">Naukri Boolean String</div>
             <div className="boolean-box" aria-label="Boolean search string">
               <div className="boolean-box-header">
