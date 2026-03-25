@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import './styles.css';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const REDIRECT_URL = import.meta.env.VITE_REDIRECT_URL || 'https://www.microsoft.com';
 
 function copyText(text) {
@@ -109,20 +109,26 @@ export default function App() {
     return name.endsWith('.pdf') || name.endsWith('.doc') || name.endsWith('.docx');
   }
 
-  /* ── file upload extract ── */
-  async function onUploadExtract(file) {
+  function onSelectUploadFile(file) {
     if (!file) { setMsg('No file selected.', 'err'); return; }
     if (!isValidFile(file)) {
       setMsg('Only PDF, DOC, and DOCX files are supported.', 'err'); return;
     }
     setUploadedFile(file);
+    setTextPreview('');
+    setMsg(`File selected: "${file.name}". Click Generate Skills to continue.`, 'ok');
+  }
+
+  /* ── file upload extract ── */
+  async function onUploadExtract() {
+    if (!uploadedFile) { setMsg('Please upload a file first.', 'err'); return; }
     setIsLoading(true);
-    setMsg(`Reading "${file.name}"…`, 'busy');
+    setMsg(`Reading "${uploadedFile.name}"…`, 'busy');
     setBooleanString(''); setSkills([]); setTextPreview('');
 
     try {
       const form = new FormData();
-      form.append('file', file);
+      form.append('file', uploadedFile);
       form.append('strictness', String(strictness));
       const res = await fetch(`${API_BASE_URL}/api/extract-file`, { method: 'POST', body: form });
       const payload = await res.json().catch(() => ({}));
@@ -139,7 +145,7 @@ export default function App() {
   const onDrop = useCallback((e) => {
     e.preventDefault(); setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    onUploadExtract(file);
+    onSelectUploadFile(file);
   }, []);
 
   const onDragOver = useCallback((e) => { e.preventDefault(); setDragOver(true); }, []);
@@ -148,7 +154,7 @@ export default function App() {
   /* ── file input change ── */
   function onFileInputChange(e) {
     const file = e.target.files?.[0];
-    if (file) onUploadExtract(file);
+    if (file) onSelectUploadFile(file);
     e.target.value = '';  // reset so same file can be re-selected
   }
 
@@ -373,6 +379,16 @@ export default function App() {
               )}
 
               <div className="actions" style={{ marginTop: '14px' }}>
+                <button
+                  className="btn primary"
+                  onClick={onUploadExtract}
+                  disabled={isLoading || !uploadedFile}
+                  aria-busy={isLoading}
+                >
+                  {isLoading
+                    ? <><span className="spinner" aria-hidden="true" /> Extracting…</>
+                    : <>⚡ Generate Skills</>}
+                </button>
                 <button className="btn ghost-danger" onClick={onClear} disabled={isLoading}>✕ Clear</button>
                 <button className="btn" onClick={() => window.open(REDIRECT_URL, '_blank', 'noopener,noreferrer')} disabled={isLoading}>↗ Naukri</button>
               </div>
