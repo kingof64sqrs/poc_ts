@@ -1,0 +1,15 @@
+[project]
+name = "poc-ts"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.135.2",
+    "openai>=2.29.0",
+    "pypdf>=6.9.2",
+    "python-docx>=1.2.0",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.22",
+    "uvicorn>=0.42.0",
+]

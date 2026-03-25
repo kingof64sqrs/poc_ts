@@ -1,0 +1,10 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Local environment secrets
+.env
+
+# Frontend artifacts
+frontend/node_modules/
+frontend/dist/
