@@ -1167,3 +1167,138 @@ textarea:focus {
   max-height: 110px;
   overflow: hidden;
 }
+
+/* ─────────────────────────────────────────────
+   Interactive Skill Cards & Custom Input
+   ───────────────────────────────────────────── */
+
+.custom-skill-action {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--surface-2);
+  padding: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.custom-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-size: 0.9rem;
+  padding: 0 12px;
+  outline: none;
+}
+
+.custom-input::placeholder {
+  color: var(--ink-3);
+}
+
+.btn.sm {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+}
+
+.skill-card.status-ignored {
+  opacity: 0.5;
+  filter: grayscale(0.8);
+}
+
+.skill-card.status-mandatory {
+  border-left: 4px solid var(--success);
+  background: rgba(16, 185, 129, 0.03);
+}
+
+.skill-card.status-optional {
+  border-left: 4px solid var(--brand);
+  background: rgba(59, 130, 246, 0.03);
+}
+
+.skill-card.status-excluded {
+  border-left: 4px solid var(--danger);
+  background: rgba(239, 68, 68, 0.03);
+  text-decoration: line-through;
+  text-decoration-color: rgba(239, 68, 68, 0.4);
+}
+
+.skill-info {
+  flex: 1;
+}
+
+.skill-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.skill-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.toggle-group {
+  display: flex;
+  background: var(--bg);
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.toggle-btn {
+  padding: 4px 10px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border: none;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.toggle-btn:hover {
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.toggle-btn.and.active {
+  background: var(--success);
+  color: #fff;
+}
+
+.toggle-btn.or.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.toggle-btn.not.active {
+  background: var(--danger);
+  color: #fff;
+}
+
+.icon-btn {
+  padding: 6px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .skill-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .skill-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+  }
+}

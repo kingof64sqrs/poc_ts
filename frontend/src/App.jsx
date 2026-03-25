@@ -72,7 +72,14 @@ export default function App() {
     const query = typeof payload.boolean_string === 'string' ? payload.boolean_string.trim() : '';
     const title = typeof payload.job_title === 'string' ? payload.job_title.trim() : '';
     const experience = typeof payload.experience_required === 'string' ? payload.experience_required.trim() : '';
-    setSkills(extracted);
+
+    // Initialize status for each skill
+    const normalizedSkills = extracted.map(s => ({
+      ...s,
+      status: s.type === 'must' ? 'mandatory' : 'optional'
+    }));
+
+    setSkills(normalizedSkills);
     setBooleanString(query);
     setJobTitle(title);
     setExperienceRequired(experience);
@@ -183,6 +190,77 @@ export default function App() {
     setCopiedSkill(skillName);
     setMsg(`Copied: ${skillName}`, 'ok');
     setTimeout(() => setCopiedSkill(null), 1800);
+  }
+
+  /* ── Interactive Boolean Logic ── */
+  const generateCustomBoolean = useCallback((currentSkills) => {
+    const mandatory = currentSkills.filter(s => s.status === 'mandatory');
+    const optional = currentSkills.filter(s => s.status === 'optional');
+    const excluded = currentSkills.filter(s => s.status === 'excluded');
+
+    let blocks = [];
+
+    // 1. Mandatory blocks: Each gets its own cluster with synonyms
+    mandatory.forEach(s => {
+      const terms = [s.name, ...(s.synonyms || [])];
+      const quoted = terms.map(t => t.includes(' ') ? `"${t}"` : t);
+      if (quoted.length > 1) {
+        blocks.push(`(${quoted.join(' OR ')})`);
+      } else {
+        blocks.push(quoted[0]);
+      }
+    });
+
+    // 2. Optional block: All combined in one OR block
+    if (optional.length > 0) {
+      let optTerms = [];
+      optional.forEach(s => {
+        const terms = [s.name, ...(s.synonyms || [])];
+        terms.forEach(t => {
+          const q = t.includes(' ') ? `"${t}"` : t;
+          if (!optTerms.includes(q)) optTerms.push(q);
+        });
+      });
+      blocks.push(`(${optTerms.join(' OR ')})`);
+    }
+
+    let finalQuery = blocks.join(' AND ');
+
+    // 3. Excluded: Added as NOT clauses
+    if (excluded.length > 0) {
+      const exTerms = excluded.map(s => {
+        return s.name.includes(' ') ? `"${s.name}"` : s.name;
+      });
+      finalQuery += ` NOT (${exTerms.join(' OR ')})`;
+    }
+
+    setBooleanString(finalQuery);
+  }, []);
+
+  function toggleSkillStatus(index, newStatus) {
+    const next = [...skills];
+    next[index].status = next[index].status === newStatus ? 'ignored' : newStatus;
+    setSkills(next);
+    generateCustomBoolean(next);
+  }
+
+  const [customSkillInput, setCustomSkillInput] = useState('');
+  function addCustomSkill() {
+    const name = customSkillInput.trim();
+    if (!name) return;
+    const newSkill = {
+      name,
+      category: 'Custom',
+      type: 'must',
+      status: 'mandatory',
+      synonyms: [],
+      evidence: 'Manually added by user'
+    };
+    const next = [...skills, newSkill];
+    setSkills(next);
+    setCustomSkillInput('');
+    generateCustomBoolean(next);
+    setMsg(`Added custom skill: ${name}`, 'ok');
   }
 
   async function handleCopyBoolean() {
@@ -457,6 +535,21 @@ export default function App() {
 
           <div className="divider" aria-hidden="true" />
 
+          {/* Custom Skill Input */}
+          {skills.length > 0 && (
+            <div className="custom-skill-action">
+              <input
+                type="text"
+                className="custom-input"
+                placeholder="Add missing skill (e.g. Python)..."
+                value={customSkillInput}
+                onChange={(e) => setCustomSkillInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCustomSkill()}
+              />
+              <button className="btn primary sm" onClick={addCustomSkill}>+ Add</button>
+            </div>
+          )}
+
           {/* Skills List */}
           {skills.length === 0 ? (
             <div className="empty-state" aria-label="No skills extracted yet">
@@ -468,27 +561,48 @@ export default function App() {
               {skills.map((skill, index) => (
                 <li
                   key={`${skill.name}-${index}`}
-                  className="skill-card"
+                  className={`skill-card status-${skill.status}`}
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <div className="skill-top">
-                    <div>
-                      <div className="skill-name">{skill.name}</div>
-                      <span className={pillClass(skill.category)}>{skill.category || skill.type || 'General'}</span>
+                    <div className="skill-info">
+                      <div className="skill-name-row">
+                        <span className="skill-name">{skill.name}</span>
+                        <span className={pillClass(skill.category)}>{skill.category || skill.type || 'General'}</span>
+                      </div>
+                      {skill.evidence && (
+                        <p className="skill-evidence">{skill.evidence}</p>
+                      )}
                     </div>
-                    <button
-                      className="btn"
-                      onClick={() => handleCopySkill(skill.name)}
-                      title={`Copy ${skill.name}`}
-                      aria-label={`Copy ${skill.name}`}
-                      style={{ flexShrink: 0 }}
-                    >
-                      {copiedSkill === skill.name ? '✓' : '⎘'}
-                    </button>
+
+                    <div className="skill-actions">
+                      <div className="toggle-group" role="group" aria-label="Filter skill">
+                        <button
+                          className={`toggle-btn and ${skill.status === 'mandatory' ? 'active' : ''}`}
+                          onClick={() => toggleSkillStatus(index, 'mandatory')}
+                          title="Must have (AND)"
+                        >AND</button>
+                        <button
+                          className={`toggle-btn or ${skill.status === 'optional' ? 'active' : ''}`}
+                          onClick={() => toggleSkillStatus(index, 'optional')}
+                          title="Optional (OR)"
+                        >OR</button>
+                        <button
+                          className={`toggle-btn not ${skill.status === 'excluded' ? 'active' : ''}`}
+                          onClick={() => toggleSkillStatus(index, 'excluded')}
+                          title="Exclude (NOT)"
+                        >NOT</button>
+                      </div>
+                      <button
+                        className="btn icon-btn"
+                        onClick={() => handleCopySkill(skill.name)}
+                        title={`Copy ${skill.name}`}
+                        aria-label={`Copy ${skill.name}`}
+                      >
+                        {copiedSkill === skill.name ? '✓' : '⎘'}
+                      </button>
+                    </div>
                   </div>
-                  {skill.evidence && (
-                    <p className="skill-evidence">{skill.evidence}</p>
-                  )}
                 </li>
               ))}
             </ul>
