@@ -32,10 +32,16 @@ app = FastAPI(title="Naukri Boolean Builder", version="2.0.0")
 
 cors_origins = os.getenv(
     "CORS_ALLOW_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
+    "",
 )
 allow_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
 allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX", "").strip() or None
+
+api_host_default = os.getenv("API_HOST", "127.0.0.1").strip() or "127.0.0.1"
+try:
+    api_port_default = int(os.getenv("API_PORT", "8000"))
+except ValueError:
+    api_port_default = 8000
 
 app.add_middleware(
     CORSMiddleware,
@@ -489,8 +495,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--jd-file", help="Path to a file containing the JD.")
     parser.add_argument("--json", action="store_true", help="Output raw JSON.")
     parser.add_argument("--serve", action="store_true", help="Run the API server.")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--host", default=api_host_default)
+    parser.add_argument("--port", type=int, default=api_port_default)
     return parser
 
 

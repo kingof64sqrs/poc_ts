@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import './styles.css';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-const REDIRECT_URL = import.meta.env.VITE_REDIRECT_URL || 'https://www.microsoft.com';
+const REDIRECT_URL = (import.meta.env.VITE_REDIRECT_URL || '').trim();
 
 function copyText(text) {
   return navigator.clipboard.writeText(text);
@@ -28,6 +28,7 @@ function pillClass(category = '') {
 }
 
 export default function App() {
+  const canOpenRedirect = Boolean(REDIRECT_URL);
   /* ── shared state ── */
   const [tab, setTab] = useState('paste');   // 'paste' | 'upload'
   const [jd, setJd] = useState('');
@@ -316,7 +317,7 @@ export default function App() {
                     : <>⚡ Extract Skills</>}
                 </button>
                 <button className="btn ghost-danger" onClick={onClear} disabled={isLoading}>✕ Clear</button>
-                <button className="btn" onClick={() => window.open(REDIRECT_URL, '_blank', 'noopener,noreferrer')} disabled={isLoading}>↗ Naukri</button>
+                <button className="btn" onClick={() => window.open(REDIRECT_URL, '_blank', 'noopener,noreferrer')} disabled={isLoading || !canOpenRedirect}>↗ Naukri</button>
               </div>
             </div>
           )}
@@ -390,7 +391,7 @@ export default function App() {
                     : <>⚡ Generate Skills</>}
                 </button>
                 <button className="btn ghost-danger" onClick={onClear} disabled={isLoading}>✕ Clear</button>
-                <button className="btn" onClick={() => window.open(REDIRECT_URL, '_blank', 'noopener,noreferrer')} disabled={isLoading}>↗ Naukri</button>
+                <button className="btn" onClick={() => window.open(REDIRECT_URL, '_blank', 'noopener,noreferrer')} disabled={isLoading || !canOpenRedirect}>↗ Naukri</button>
               </div>
             </div>
           )}
